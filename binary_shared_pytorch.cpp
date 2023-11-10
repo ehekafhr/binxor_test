@@ -2,13 +2,14 @@
 #include <iostream>
 #include <vector>
 
-torch::Tensor binary_xor_matmul_cu(torch::Tensor, torch::Tensor);
+void binary_xor_matmul_cu(torch::Tensor&, torch::Tensor&, torch::Tensor&);
 
-torch::Tensor binxor(
-    torch::Tensor input1,
-    torch::Tensor input2
+void binxor(
+    torch::Tensor& input1,
+    torch::Tensor& input2,
+    torch::Tensor& input3
 ){
-    return binary_xor_matmul_cu(input1, input2);
+    binary_xor_matmul_cu(input1, input2, input3);
 };
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m){

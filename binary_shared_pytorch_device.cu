@@ -15,7 +15,7 @@
 #define DSIZE sizeof(unsigned int)
 #define DSIZE_BIT sizeof(unsigned int)*8 
 
-#define TILE_SIZE 32
+#define TILE_SIZE 16
 
 using namespace std;
 using data_type = torch::Tensor; 
@@ -24,7 +24,7 @@ using data_type = torch::Tensor;
 //What Tile_size? should it be squared form?
 
 
-__global__ void tile_encoding(float* mat1, float* mat2, int* mat3, int m, int n, int k){
+__global__ void tile_encoding(float* mat1, float* mat2, float* mat3, int m, int n, int k){
 
     __shared__ unsigned int tile1[TILE_SIZE][TILE_SIZE]; //For 32 size, 32*32
     __shared__ unsigned int tile2[TILE_SIZE][TILE_SIZE]; //For 32 size, 32*32
@@ -58,14 +58,14 @@ __global__ void tile_encoding(float* mat1, float* mat2, int* mat3, int m, int n,
         mat3[row*k+column] = 1;
     }
     else{
-        mat3[row*k+column] = 0;
+        mat3[row*k+column] = temp;
     }
 }
 
 //input is float matrix ( mat1), float matrix(mat2) (should be transposed), float matrix mat3(output)
 //Size: mat1: (32*m) * n, mat2: n * (32*k). result matrix size: (32*m)*(32*k)
 //m = 32x. n = x. k = 32x.
-torch::Tensor binary_xor_matmul_cu(torch::Tensor mat1, torch::Tensor mat2){
+void binary_xor_matmul_cu(torch::Tensor& mat1, torch::Tensor& mat2, torch::Tensor& mat3){
     //First, Mat1/2/3 to global Mem.
     unsigned int m = mat1.size(0);
     unsigned int n = mat1.size(1);
@@ -74,17 +74,17 @@ torch::Tensor binary_xor_matmul_cu(torch::Tensor mat1, torch::Tensor mat2){
 
     float* d_mat1 = (float *)mat1.data<float>();
     float* d_mat2 = (float *)mat2.data<float>();
-    torch::Tensor mat3 = torch::zeros({m*k,1}, torch::dtype(torch::kInt32).device(torch::kCUDA));
-    int* d_mat3 = (int *)mat3.data<int>();
+    float* d_mat3 = (float *)mat3.data<float>();
 
 
     dim3 block_main(16, 16); 
-    dim3 grid_main(k/16, m/16);
+    dim3 grid_main(int(k/16), int(m/16));
+    
+    
 
     //Main Calculation here
     tile_encoding <<< grid_main, block_main>>> (d_mat1, d_mat2, d_mat3,m,n,k);
-
-    torch::Tensor result = torch::from_blob(d_mat3, {m*k}, torch::kInt32);
-    
-    return result;
+    cudaDeviceSynchronize();
+    mat3 = torch::from_blob(d_mat3, {m*k}, torch::kInt32);
+    cudaDeviceSynchronize();
 }
