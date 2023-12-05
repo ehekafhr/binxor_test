@@ -12,9 +12,6 @@
 
 #include <torch/extension.h>
 
-#define DSIZE sizeof(unsigned int)
-#define DSIZE_BIT sizeof(unsigned int)*8 
-
 #define TILE_SIZE 16
 
 using namespace std;
@@ -23,6 +20,21 @@ using data_type = torch::Tensor;
 //TODO : Let us make it "Flexable"
 //What Tile_size? should it be squared form?
 
+__global__ void row_encoding_cu(float* inmatrix, float* outmatrix, int row){
+    unsigned int temp = 0;
+    unsigned int x = threadIdx.x +blockIdx.x * blockDim.x;
+    unsigned int y = threadIdx.y + blockIdx.y * blockDim.y;
+    for(int i = 0 ; i < 32; i ++){
+
+    }
+}
+
+torch::Tensor row_encoding(torch::Tensor mat1, torch::Tensor mat2, int m, int n){
+    dim3 block(32,32);
+    dim3 grid(((m-1)/32)+1, ((n-1)/32)+1)
+    row_encoding_cu <<< grid, block >>> (mat1, mat2, n);
+
+}
 
 __global__ void tile_encoding(float* mat1, float* mat2, float* mat3, int m, int n, int k){
 
@@ -58,7 +70,7 @@ __global__ void tile_encoding(float* mat1, float* mat2, float* mat3, int m, int 
         mat3[row*k+column] = 1;
     }
     else{
-        mat3[row*k+column] = temp;
+        mat3[row*k+column] = 0;
     }
 }
 
